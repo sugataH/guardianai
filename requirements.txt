@@ -1,0 +1,57 @@
+# -------------------------
+# Core & Utilities
+# -------------------------
+numpy==1.26.4
+scipy==1.11.4
+pydantic==2.6.4
+python-dateutil==2.8.2
+pyyaml==6.0.1
+orjson==3.9.15
+redis==5.0.1
+
+# -------------------------
+# Machine Learning / AI
+# -------------------------
+torch==2.1.2
+torchvision==0.16.2
+torchaudio==2.1.2
+transformers==4.36.2
+sentence-transformers==2.2.2
+scikit-learn==1.3.2
+pyod==1.1.3
+
+# -------------------------
+# NLP
+# -------------------------
+spacy==3.7.4
+nltk==3.8.1
+
+# -------------------------
+# Reinforcement Learning (future phases)
+# -------------------------
+stable-baselines3==2.2.1
+gymnasium==0.29.1
+pettingzoo==1.24.1
+
+# -------------------------
+# Security, Identity, Messaging
+# -------------------------
+cryptography==42.0.5
+pyjwt==2.8.0
+grpcio==1.60.0
+protobuf==4.25.3
+
+# -------------------------
+# Backend / HITL
+# -------------------------
+fastapi==0.110.0
+uvicorn==0.27.1
+prometheus-client==0.19.0
+
+# -------------------------
+# Development & Testing
+# -------------------------
+pytest==8.0.2
+black==24.2.0
+isort==5.13.2
+mypy==1.8.0
