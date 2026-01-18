@@ -20,6 +20,12 @@ from guardianai.agents.data_integrity import MemoryWriteMonitor
 from guardianai.agents.behavior_monitor import BehaviorMonitor
 from guardianai.agents.resource_monitor import ResourceMonitor
 
+#logger
+from guardianai.utils.logger import get_logger
+
+#metrics
+from guardianai.utils.metrics import Metrics
+
 
 
 class SidecarRuntime(SidecarHooks):
@@ -42,7 +48,15 @@ class SidecarRuntime(SidecarHooks):
         self.behavior_detector = BehaviorMonitor()
         self.resource_detector = ResourceMonitor()
 
+        #logger
+        self.logger = get_logger(f"guardianai.sidecar.{self.sidecar_id}")
+
+        #metrics
+        self.metrics = Metrics()
+
+
     def inspect_prompt(self, prompt: str):
+        self.metrics.inc("inspect.total")
         self.inspect_resource()
         self.inspect_behavior()
         risk = self.prompt_detector.analyze({"prompt": prompt})
@@ -61,12 +75,20 @@ class SidecarRuntime(SidecarHooks):
             # Always publish first
             self.bus.publish(self.sidecar_id, alert.model_dump())
 
+            #logging
+            self.logger.warning(
+                f"block_prompt agent={self.agent_id} confidence={risk:.2f}"
+            )
+
             # Then block
+            self.metrics.inc("block.prompt")
             self.actions.block()
+
 
         return prompt
 
     def inspect_output(self, output: str):
+        self.metrics.inc("inspect.total")
         self.inspect_resource()
         self.inspect_behavior()
         risk = self.output_detector.analyze({"output": output})
@@ -85,12 +107,19 @@ class SidecarRuntime(SidecarHooks):
             # Publish first
             self.bus.publish(self.sidecar_id, alert.model_dump())
 
+            #logging
+            self.logger.warning(
+                f"block_output agent={self.agent_id} confidence={risk:.2f}"
+            )
+
             # Then block output
+            self.metrics.inc("block.output")
             self.actions.block()
 
         return output
 
     def inspect_tool(self, tool: str, args: dict):
+        self.metrics.inc("inspect.total")
         self.inspect_resource()
         self.inspect_behavior()
         risk = self.tool_detector.analyze({"tool": tool, "args": args})
@@ -109,11 +138,19 @@ class SidecarRuntime(SidecarHooks):
             # Publish before blocking
             self.bus.publish(self.sidecar_id, alert.model_dump())
 
+            #logging
+            self.logger.warning(
+                f"block_tool agent={self.agent_id} confidence={risk:.2f}"
+            )
+
+            # Block output
+            self.metrics.inc("block.tool")
             self.actions.block()
 
         return tool, args
     
     def inspect_memory_write(self, content: str):
+        self.metrics.inc("inspect.total")
         self.inspect_resource()
         self.inspect_behavior()
         risk = self.memory_detector.analyze({"memory": content})
@@ -131,8 +168,16 @@ class SidecarRuntime(SidecarHooks):
 
             # Publish before blocking
             self.bus.publish(self.sidecar_id, alert.model_dump())
+            
+            # Logging
+            self.logger.warning(
+                f"block_memory agent={self.agent_id} confidence={risk:.2f}"
+            )
 
+            # Block output
+            self.metrics.inc("block.memory")
             self.actions.block()
+            
 
         return content
     
@@ -157,6 +202,10 @@ class SidecarRuntime(SidecarHooks):
             )
 
             self.bus.publish(self.sidecar_id, alert.model_dump())
+            self.logger.info(
+                f"signal_behavior agent={self.agent_id} confidence={risk:.2f}"
+            )
+
 
     def inspect_resource(self):
         risk = self.resource_detector.analyze(
@@ -181,3 +230,7 @@ class SidecarRuntime(SidecarHooks):
             )
 
             self.bus.publish(self.sidecar_id, alert.model_dump())
+            self.logger.info(
+                f"signal_resource agent={self.agent_id} confidence={risk:.2f}"
+            )
+
