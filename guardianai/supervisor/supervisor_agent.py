@@ -57,8 +57,9 @@ class SupervisorAgent:
         now = time.time()
 
         cooldown_key = (agent_id, event_type)
+        
 
-        # Deduplicate alerts within cooldown window
+         # Deduplicate alerts within cooldown window
         if now - self.cooldowns[cooldown_key] < self.cooldown_window:
             return
 
@@ -69,6 +70,12 @@ class SupervisorAgent:
 
         # Compute threat
         threat = self.correlator.get_threat_score(agent_id)
+
+        # Log threat buildup
+        self.logger.info(
+            f"threat_update agent={agent_id} score={threat:.2f} state={self.agent_states.get(agent_id,'NORMAL')}"
+        )
+
 
         # Do not repeat actions on quarantined agents
         current_state = self.agent_states.get(agent_id, "NORMAL")

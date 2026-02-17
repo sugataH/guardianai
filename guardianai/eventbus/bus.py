@@ -27,6 +27,8 @@ class EventBus:
             sender_id=sender_id,
             timestamp=datetime.utcnow(),
             signature=signed
+
+        
         )
 
         self.event_log.append(event)
