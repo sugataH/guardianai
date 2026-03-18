@@ -1,10 +1,25 @@
 """
-Docstring for guardianai.sidecar.hooks
-This file defines hook points that an AI agent must call:
-before a prompt
-after a response
-before tool use
-before memory write
+guardianai.sidecar.hooks
+========================
+Hook points that every operational AI agent must call.
+The SidecarRuntime overrides these to inject security monitoring.
+
+Usage pattern (operational agent):
+    class MyAgent:
+        def __init__(self, sidecar: SidecarRuntime):
+            self.sidecar = sidecar
+
+        def process_prompt(self, prompt: str) -> str:
+            self.sidecar.inspect_prompt(prompt)       # ← hook
+            # ... agent logic ...
+            self.sidecar.inspect_output(output)       # ← hook
+            return output
+
+        def use_tool(self, tool: str, args: dict):
+            self.sidecar.inspect_tool(tool, args)     # ← hook
+
+        def write_memory(self, key: str, value: str):
+            self.sidecar.inspect_memory_write(key, value)  # ← hook
 """
 
 from typing import Any, Dict
@@ -12,18 +27,25 @@ from typing import Any, Dict
 
 class SidecarHooks:
     """
-    Hook points that operational AI agents must call.
-    The sidecar inspects everything here.
+    Hook points for sidecar interception.
+    Overridden by SidecarRuntime — stubs here allow agents to run
+    without a sidecar attached (testing / development mode).
     """
 
-    def on_prompt(self, agent_id: str, prompt: str) -> Dict[str, Any]:
-        return {"agent_id": agent_id, "prompt": prompt}
+    def inspect_prompt(self, prompt: str) -> str:
+        return prompt
 
-    def on_output(self, agent_id: str, output: str) -> Dict[str, Any]:
-        return {"agent_id": agent_id, "output": output}
+    def inspect_output(self, output: str) -> str:
+        return output
 
-    def on_tool_call(self, agent_id: str, tool: str, args: Dict[str, Any]) -> Dict[str, Any]:
-        return {"agent_id": agent_id, "tool": tool, "args": args}
+    def inspect_tool(self, tool: str, args: Dict[str, Any]) -> tuple:
+        return tool, args
 
-    def on_memory_write(self, agent_id: str, content: str) -> Dict[str, Any]:
-        return {"agent_id": agent_id, "memory": content}
+    def inspect_memory_write(self, key: str = "", value: str = "") -> str:
+        return value
+
+    def inspect_behavior(self) -> None:
+        pass
+
+    def inspect_resource(self) -> None:
+        pass

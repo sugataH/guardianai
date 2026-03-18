@@ -1,59 +1,88 @@
-"""his file defines the contract between:
-Sidecars
-Supervisor
-Audit system
-HITL
-Every alert in GuardianAI follows this schema."""
+"""
+guardianai.schemas.alert_schema
+================================
+Defines the contract between Sidecars, Supervisor, Audit, and HITL.
+Every alert in GuardianAI follows this schema exactly.
+
+Event flow:
+    SidecarRuntime → SecurityAlert → EventBus (as SignedEvent)
+    → SupervisorAgent → AuditLogger + HITL (if quarantined)
+"""
 
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 import uuid
 
 
 class AlertEvidence(BaseModel):
     """
-    Evidence collected by sidecar detectors.
-    This is designed to be machine-readable and human-auditable.
+    Structured evidence collected at detection time.
+    Machine-readable and human-auditable.
+    All fields are optional — only relevant fields are populated per event type.
     """
-    prompt_snippet: Optional[str] = None
-    output_snippet: Optional[str] = None
-    tool_call: Optional[Dict[str, Any]] = None
-    memory_write: Optional[str] = None
-    behavior_metrics: Optional[Dict[str, float]] = None
+    prompt_snippet:    Optional[str]             = None  # prompt_injection
+    output_snippet:    Optional[str]             = None  # unsafe_output
+    tool_call:         Optional[Dict[str, Any]]  = None  # tool_misuse
+    memory_write:      Optional[str]             = None  # memory_poisoning
+    behavior_metrics:  Optional[Dict[str, Any]]  = None  # behavior_anomaly, resource_exhaustion
+    detector_reasons:  Optional[List[str]]       = None  # human-readable reason list from detector
 
 
 class SecurityAlert(BaseModel):
     """
-    Core security event exchanged between Sidecars and the Supervisor Agent.
+    Core security event exchanged between Sidecars and the Supervisor.
+
+    Fields:
+        event_id        — UUID, unique per alert
+        agent_id        — which operational agent triggered this
+        sidecar_id      — which sidecar instance detected it
+        event_type      — one of six canonical types (see EVENT_TYPES)
+        timestamp       — UTC time of detection
+        severity        — low / medium / high
+        confidence      — detector risk score [0.0, 1.0]
+        policy_violated — optional policy name if known
+        explanation     — human-readable explanation from detector
+        evidence        — structured evidence (AlertEvidence)
+        signature       — HMAC-SHA256 over payload, filled by EventBus
     """
 
-    # Unique ID for this alert
-    event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-
-    # Identity
-    agent_id: str
+    # --- Identity ---
+    event_id:   str = Field(default_factory=lambda: str(uuid.uuid4()))
+    agent_id:   str
     sidecar_id: str
 
-    # What happened
-    event_type: str  # e.g. "prompt_injection", "tool_misuse", "data_exfiltration"
+    # --- Classification ---
+    event_type: str  # prompt_injection | unsafe_output | tool_misuse |
+                     # memory_poisoning | behavior_anomaly | resource_exhaustion
 
-    # Time
+    # --- Timing ---
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-    # Risk assessment
-    severity: str  # "low", "medium", "high"
-    confidence: float = Field(ge=0.0, le=1.0)
+    # --- Risk ---
+    severity:   str    # "low" | "medium" | "high"
+    confidence: float  = Field(ge=0.0, le=1.0)
 
-    # Policy & explanation
+    # --- Context ---
     policy_violated: Optional[str] = None
-    explanation: Optional[str] = None
+    explanation:     Optional[str] = None
 
-    # Evidence
+    # --- Evidence ---
     evidence: AlertEvidence
 
-    # Cryptographic signature (filled by event bus)
+    # --- Cryptographic integrity ---
     signature: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
+
+
+# Canonical event types — used for correlation weights
+EVENT_TYPES = {
+    "prompt_injection",
+    "unsafe_output",
+    "tool_misuse",
+    "memory_poisoning",
+    "behavior_anomaly",
+    "resource_exhaustion",
+}
