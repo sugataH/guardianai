@@ -1,0 +1,8 @@
+python FinalExam/exam_01_prompt_inspector.py     
+python FinalExam/exam_02_output_validator.py     
+python FinalExam/exam_03_memory_monitor.py       
+python FinalExam/exam_04_tool_use_monitor.py     
+python FinalExam/exam_05_behaviour_monitor.py    
+python FinalExam/exam_06_resource_monitor.py     
+python FinalExam/exam_07_supervisor.py           
+python FinalExam/exam_08_system_evaluation.py    
